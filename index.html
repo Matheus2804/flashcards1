@@ -58,42 +58,39 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 label{display:block;font-size:13px;margin-top:10px;color:var(--muted)}
 input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
 .keys{font-size:12px;color:var(--muted);text-align:center;margin-top:10px}
+.welcome{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px 16px;text-align:center}
+.welcome h1{font-size:30px}
+.welcome p{color:var(--muted);margin:0 0 14px}
+.profiles{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;width:100%;max-width:520px}
+.profile{flex:1 1 200px;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:26px 16px;cursor:pointer;font:inherit;color:var(--ink)}
+.profile:hover{border-color:var(--accent)}
+.profile .big{font-size:24px;font-weight:700;display:block}
+.profile .sub{font-size:13px;color:var(--muted);display:block;margin-top:6px}
+.who{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+.who b{color:var(--ink)}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="welcome" id="welcome">
+  <h1>📚 Flashcards de Inglês</h1>
+  <p>Quem vai estudar agora?</p>
+  <div class="profiles" id="profiles"></div>
+</div>
+
+<div class="wrap" id="app" style="display:none">
   <header>
     <h1>📚 Flashcards de Inglês</h1>
-    <div class="stats" id="stats"></div>
+    <div class="who">Estudando como <b id="whoName"></b> <button class="btn sm" id="switchBtn">Trocar</button></div>
   </header>
+  <div class="stats" id="stats" style="margin-bottom:14px"></div>
   <div class="tabs" id="tabs"></div>
   <div id="stage"></div>
   <div class="keys">Atalhos: <b>Espaço</b> vira o card · <b>1</b> Aprendi · <b>2</b> Rever · <b>3</b> Difícil</div>
   <div class="tools">
-    <button class="btn sm" id="addBtn">+ Adicionar card</button>
     <button class="btn sm" id="aheadBtn">Estudar adiantado</button>
     <button class="btn sm" id="resetBtn">Zerar progresso</button>
   </div>
 </div>
-
-<dialog id="dlg">
-  <form method="dialog" id="form">
-    <h3 style="margin-top:0">Novo card</h3>
-    <label>Categoria
-      <select id="f_cat"></select>
-    </label>
-    <label>Inglês <input id="f_en" required></label>
-    <label>Pronúncia (ex.: "téik óf") <input id="f_pt"></label>
-    <label>Tradução <input id="f_tr" required></label>
-    <label>Macete <input id="f_tip"></label>
-    <label>Exemplo <input id="f_ex"></label>
-    <label>Pergunta para responder <input id="f_q"></label>
-    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
-      <button type="button" class="btn" id="cancelCard">Cancelar</button>
-      <button type="submit" class="btn" id="saveCard" style="background:var(--accent);color:var(--accent-ink)">Salvar</button>
-    </div>
-  </form>
-</dialog>
 
 <script>
 const CATS = {
@@ -190,15 +187,21 @@ const BASE = [
 ];
 
 // ---------- ESTADO ----------
-const KEY="flashcards_ingles_v1";
+// Os cards (BASE) são iguais para todos. Só o progresso é separado por pessoa.
+const PEOPLE=["Anderson","Julia"];
 const DAY=86400000;
-let state={progress:{},custom:[]};
-try{const s=localStorage.getItem(KEY); if(s) state=Object.assign(state,JSON.parse(s));}catch(e){}
+let profile=null, KEY=null;
+let state={progress:{}};
+function loadState(){
+  state={progress:{}};
+  try{const s=localStorage.getItem(KEY); if(s) state=Object.assign(state,JSON.parse(s));}catch(e){}
+  if(!state.progress) state.progress={};
+}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
 
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,"-");
 function allCards(){
-  return BASE.concat(state.custom).map(c=>({...c,id:c.c+":"+slug(c.en)}));
+  return BASE.map(c=>({...c,id:c.c+":"+slug(c.en)}));
 }
 let currentCat="all", ahead=false, current=null, flipped=false;
 
@@ -325,20 +328,38 @@ document.addEventListener("keydown",e=>{
 // ferramentas
 document.getElementById("aheadBtn").onclick=()=>{ahead=true;next();};
 document.getElementById("resetBtn").onclick=()=>{ if(confirm("Zerar todo o progresso?")){state.progress={};save();ahead=false;next();} };
-const dlg=document.getElementById("dlg");
-document.getElementById("f_cat").innerHTML=Object.entries(CATS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("");
-document.getElementById("addBtn").onclick=()=>{document.getElementById("form").reset();dlg.showModal();};
-document.getElementById("cancelCard").onclick=()=>dlg.close();
-dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
-document.getElementById("form").addEventListener("submit",e=>{
-  e.preventDefault();
-  const g=id=>document.getElementById(id).value.trim();
-  if(!g("f_en")||!g("f_tr")) return;
-  state.custom.push({c:g("f_cat"),en:g("f_en"),ipa:"",pt:g("f_pt"),tr:g("f_tr"),tip:g("f_tip")||"—",ex:g("f_ex")||"—",q:g("f_q")||"Make a sentence with: "+g("f_en")});
-  save(); dlg.close(); next();
-});
 
-next();
+
+// ---------- PERFIL ----------
+function startProfile(name){
+  profile=name; KEY="flashcards_ingles_v2_"+name.toLowerCase();
+  try{localStorage.setItem("flashcards_ingles_last",name);}catch(e){}
+  loadState();
+  currentCat="all"; ahead=false;
+  document.getElementById("welcome").style.display="none";
+  document.getElementById("app").style.display="";
+  document.getElementById("whoName").textContent=name;
+  next();
+}
+function showWelcome(){
+  try{speechSynthesis.cancel();}catch(e){}
+  current=null; flipped=false;
+  document.getElementById("app").style.display="none";
+  const w=document.getElementById("welcome");
+  w.style.display="";
+  w.querySelector("h1").textContent="📚 Flashcards de Inglês";
+  document.getElementById("profiles").innerHTML=PEOPLE.map(n=>{
+    let learned=0,total=BASE.length;
+    try{
+      const st=JSON.parse(localStorage.getItem("flashcards_ingles_v2_"+n.toLowerCase())||"{}");
+      learned=Object.keys(st.progress||{}).length;
+    }catch(e){}
+    return `<button class="profile" data-n="${n}"><span class="big">Welcome ${n}</span><span class="sub">${learned} de ${total} cards estudados</span></button>`;
+  }).join("");
+  document.querySelectorAll(".profile").forEach(b=>b.onclick=()=>startProfile(b.dataset.n));
+}
+document.getElementById("switchBtn").onclick=showWelcome;
+showWelcome();
 </script>
 </body>
 </html>
