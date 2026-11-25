@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flashcards de Inglês</title>
+<style>
+:root{
+  --bg:#f6f4ef; --card:#ffffff; --ink:#1f2430; --muted:#6b7280; --line:#e4e0d6;
+  --accent:#2f5d50; --accent-ink:#fff; --good:#2f7d4f; --mid:#b7791f; --hard:#b4412f;
+  --shadow:0 10px 30px rgba(31,36,48,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#15181d; --card:#1f242c; --ink:#eceae4; --muted:#9aa1ad; --line:#323944; --accent:#6fb59f; --accent-ink:#10231d; --shadow:0 10px 30px rgba(0,0,0,.35);}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+h1{font-size:22px;margin:0}
+.stats{display:flex;gap:8px;flex-wrap:wrap;font-size:13px}
+.pill{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--muted)}
+.pill b{color:var(--ink)}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px}
+.tab{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 13px;border-radius:10px;cursor:pointer;font-size:14px}
+.tab.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tab .n{opacity:.7;font-size:12px;margin-left:4px}
+.scene{perspective:1200px}
+.card{position:relative;min-height:380px;cursor:pointer;transform-style:preserve-3d;transition:transform .55s}
+.card.flip{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:24px;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:auto}
+.back{transform:rotateY(180deg);cursor:default}
+.front{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
+.cat{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.en{font-size:38px;font-weight:700;margin:4px 0}
+.ipa{color:var(--muted);font-size:17px}
+.say{font-size:13px;color:var(--accent)}
+.hint{margin-top:18px;font-size:13px;color:var(--muted)}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:10px;cursor:pointer;font-size:14px}
+.btn:hover{border-color:var(--accent)}
+.btn.sm{padding:4px 10px;font-size:13px}
+.tr{font-size:26px;font-weight:700;margin:2px 0 2px}
+.row{margin-top:12px}
+.lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.tip{background:rgba(183,121,31,.12);border-left:3px solid var(--mid);padding:8px 12px;border-radius:6px}
+.ex{font-style:italic}
+textarea{width:100%;min-height:58px;resize:vertical;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;background:var(--bg);color:var(--ink);margin-top:4px}
+.grade{display:none;gap:10px;margin-top:16px}
+.grade.show{display:flex}
+.grade button{flex:1;border:0;padding:13px 8px;border-radius:12px;color:#fff;font-weight:600;font-size:15px;cursor:pointer}
+.grade small{display:block;font-weight:400;opacity:.85;font-size:12px}
+.g1{background:var(--good)} .g2{background:var(--mid)} .g3{background:var(--hard)}
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:18px;padding:40px 20px;text-align:center}
+.empty h2{margin:0 0 6px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px;justify-content:center}
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--ink);max-width:460px;width:92%}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+label{display:block;font-size:13px;margin-top:10px;color:var(--muted)}
+input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+.keys{font-size:12px;color:var(--muted);text-align:center;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📚 Flashcards de Inglês</h1>
+    <div class="stats" id="stats"></div>
+  </header>
+  <div class="tabs" id="tabs"></div>
+  <div id="stage"></div>
+  <div class="keys">Atalhos: <b>Espaço</b> vira o card · <b>1</b> Aprendi · <b>2</b> Rever · <b>3</b> Difícil</div>
+  <div class="tools">
+    <button class="btn sm" id="addBtn">+ Adicionar card</button>
+    <button class="btn sm" id="aheadBtn">Estudar adiantado</button>
+    <button class="btn sm" id="resetBtn">Zerar progresso</button>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <form method="dialog" id="form">
+    <h3 style="margin-top:0">Novo card</h3>
+    <label>Categoria
+      <select id="f_cat"></select>
+    </label>
+    <label>Inglês <input id="f_en" required></label>
+    <label>Pronúncia (ex.: "téik óf") <input id="f_pt"></label>
+    <label>Tradução <input id="f_tr" required></label>
+    <label>Macete <input id="f_tip"></label>
+    <label>Exemplo <input id="f_ex"></label>
+    <label>Pergunta para responder <input id="f_q"></label>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button type="button" class="btn" id="cancelCard">Cancelar</button>
+      <button type="submit" class="btn" id="saveCard" style="background:var(--accent);color:var(--accent-ink)">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const CATS = {
+  phrasal:{label:"Phrasal Verbs"},
+  noun:{label:"Nouns"},
+  verb:{label:"Verbs"},
+  adj:{label:"Adjectives"},
+  expr:{label:"Expressions"},
+  slang:{label:"Slang"}
+};
+
+// c=categoria, en, ipa, pt=pronúncia aproximada, tr=tradução, tip=macete, ex=exemplo, q=pergunta
+const BASE = [
+// ---------- PHRASAL VERBS ----------
+{c:"phrasal",en:"take off",ipa:"/teɪk ɔːf/",pt:"têik óf",tr:"decolar; tirar (roupa)",tip:"TAKE + OFF: 'tirar para fora'. O avião 'se tira' do chão = decola. A roupa 'sai' do corpo = tirar.",ex:"The plane takes off at 6:30. / Take off your shoes.",q:"What time does your plane usually take off when you travel?"},
+{c:"phrasal",en:"get along with",ipa:"/ɡet əˈlɔːŋ wɪð/",pt:"guét alónng uíth",tr:"dar-se bem com",tip:"'Get along' = 'ir junto'. Quando duas pessoas vão junto, sem brigar, elas se dão bem.",ex:"I get along with my coworkers.",q:"Who do you get along with the most in your family?"},
+{c:"phrasal",en:"wake up",ipa:"/weɪk ʌp/",pt:"uêik áp",tr:"acordar",tip:"Pense em 'levantar' (UP) a consciência: ela sobe quando você acorda.",ex:"I wake up at 7 a.m.",q:"What time do you wake up on weekends?"},
+{c:"phrasal",en:"look for",ipa:"/lʊk fɔːr/",pt:"luk fór",tr:"procurar",tip:"LOOK (olhar) + FOR (em busca de) = olhar em busca de algo.",ex:"I'm looking for my phone.",q:"What are you looking for these days?"},
+{c:"phrasal",en:"hang out",ipa:"/hæŋ aʊt/",pt:"rrãng áut",tr:"sair/passar o tempo com amigos",tip:"'Pendurar para fora': você 'fica pendurado' na rua com a galera.",ex:"We hang out on Fridays.",q:"Where do you like to hang out with your friends?"},
+{c:"phrasal",en:"run out of",ipa:"/rʌn aʊt əv/",pt:"rân áut óv",tr:"ficar sem, acabar",tip:"O estoque 'corre para fora' e some. Acabou!",ex:"We ran out of milk.",q:"What do you always run out of at home?"},
+{c:"phrasal",en:"find out",ipa:"/faɪnd aʊt/",pt:"fáind áut",tr:"descobrir",tip:"FIND = achar; OUT = para fora, à luz. Você acha algo que estava escondido.",ex:"I found out the truth yesterday.",q:"What did you find out recently that surprised you?"},
+{c:"phrasal",en:"give up",ipa:"/ɡɪv ʌp/",pt:"guív áp",tr:"desistir",tip:"'Dar para cima': você entrega os pontos.",ex:"Don't give up!",q:"Have you ever wanted to give up on something? What was it?"},
+{c:"phrasal",en:"pick up",ipa:"/pɪk ʌp/",pt:"pík áp",tr:"pegar; buscar (alguém)",tip:"Pegar algo do chão e levantar (UP). Também vale para buscar pessoas de carro.",ex:"Can you pick me up at 8?",q:"Who do you usually pick up from school or work?"},
+
+// ---------- NOUNS ----------
+{c:"noun",en:"weather",ipa:"/ˈweðər/",pt:"uéder",tr:"clima, tempo (meteorológico)",tip:"Não confunda com 'whether' (se). O 'th' é suave: língua entre os dentes.",ex:"What's the weather like today?",q:"What's the weather like today where you are?"},
+{c:"noun",en:"brand",ipa:"/brænd/",pt:"brénd",tr:"marca",tip:"Parece 'brando', mas é marca! Pense: marca a ferro (branding).",ex:"This brand is very popular.",q:"What's your favorite brand of sneakers or clothes?"},
+{c:"noun",en:"freezer",ipa:"/ˈfriːzər/",pt:"frízer",tr:"congelador / freezer",tip:"Vem de 'freeze' (congelar) + ER (quem faz). É quem congela!",ex:"Put the meat in the freezer.",q:"What do you keep in your freezer?"},
+{c:"noun",en:"refrigerator / fridge",ipa:"/rɪˈfrɪdʒəreɪtər/",pt:"rifrídjireiter / frídj",tr:"geladeira",tip:"No dia a dia todo mundo fala só 'fridge' (frídj).",ex:"There is cold water in the fridge.",q:"What is in your fridge right now?"},
+{c:"noun",en:"smoothie",ipa:"/ˈsmuːði/",pt:"smúdi",tr:"vitamina (de frutas)",tip:"'Smooth' = macio/liso. Uma bebida lisinha e batida.",ex:"I make a banana smoothie every morning.",q:"What fruits do you put in your smoothie?"},
+{c:"noun",en:"avocado",ipa:"/ˌævəˈkɑːdoʊ/",pt:"avocádou",tr:"abacate",tip:"Cuidado: 'abacaxi' é pineapple. Avocado soa quase como 'avocado' em PT, mas com sotaque no 'ca'.",ex:"I like avocado toast.",q:"Do you prefer avocado with sugar or with salt?"},
+{c:"noun",en:"man / men",ipa:"/mæn/ · /men/",pt:"mén / mén",tr:"homem / homens",tip:"Plural irregular: troca o A por E. Man → men. A pronúncia é quase igual!",ex:"Two men are talking.",q:"How many men and women work with you?"},
+{c:"noun",en:"woman / women",ipa:"/ˈwʊmən/ · /ˈwɪmɪn/",pt:"uúmen / uímin",tr:"mulher / mulheres",tip:"A escrita muda o O→E, e a pronúncia muda: 'uúmen' vira 'uímin'.",ex:"The women are in the kitchen.",q:"Who is an inspiring woman in your life?"},
+{c:"noun",en:"food",ipa:"/fuːd/",pt:"fúud",tr:"comida",tip:"'oo' longo: fúud. Não é 'fud' curto.",ex:"The food is delicious.",q:"What kind of food do you cook best?"},
+{c:"noun",en:"second",ipa:"/ˈsekənd/",pt:"sékend",tr:"segundo (tempo)",tip:"'Just a second' = só um segundinho.",ex:"Wait a second!",q:"What can you do in just one second?"},
+{c:"noun",en:"ground beef",ipa:"/ɡraʊnd biːf/",pt:"gráund bífi",tr:"carne moída",tip:"'Ground' = moída (de 'grind'). Não use 'smashed meat'.",ex:"I use ground beef for burgers.",q:"What do you cook with ground beef?"},
+{c:"noun",en:"nap",ipa:"/næp/",pt:"nép",tr:"cochilo",tip:"Curtinho como a palavra. Take a nap = tirar um cochilo.",ex:"I took a nap after lunch.",q:"Do you like to take a nap in the afternoon?"},
+{c:"noun",en:"pride",ipa:"/praɪd/",pt:"práid",tr:"orgulho",tip:"Do título 'Pride and Prejudice' (Orgulho e Preconceito).",ex:"She has a lot of pride.",q:"What are you proud of this year?"},
+
+// ---------- VERBS ----------
+{c:"verb",en:"arrive",ipa:"/əˈraɪv/",pt:"eráiv",tr:"chegar",tip:"Use 'arrive at' (lugar pequeno) e 'arrive in' (cidade/país). Passado: arrived = cheguei.",ex:"I arrived late yesterday.",q:"What time did you arrive home yesterday?"},
+{c:"verb",en:"organize",ipa:"/ˈɔːrɡənaɪz/",pt:"órganáiz",tr:"organizar",tip:"Igual ao português, mas termina em -IZE.",ex:"I organize my week on Sundays.",q:"What do you need to organize this week?"},
+{c:"verb",en:"manage",ipa:"/ˈmænɪdʒ/",pt:"ménidj",tr:"gerenciar; conseguir",tip:"'Manager' = gerente. Quem faz manage é o gerente!",ex:"She manages a small team.",q:"How do you manage your time?"},
+{c:"verb",en:"vent",ipa:"/vent/",pt:"vént",tr:"desabafar",tip:"'Vent' é uma saída de ar: o vapor sai. Você solta a pressão falando.",ex:"I need to vent about my day.",q:"Who do you vent to when you're stressed?"},
+{c:"verb",en:"leave",ipa:"/liːv/",pt:"líiv",tr:"sair; deixar",tip:"Leave home = sair de casa. Leave a message = deixar um recado. Passado: left.",ex:"I leave home at 7.",q:"What time do you leave home in the morning?"},
+{c:"verb",en:"update",ipa:"/ʌpˈdeɪt/",pt:"apdêit",tr:"atualizar",tip:"UP + DATE: colocar a data em dia.",ex:"I need to update my phone.",q:"What app did you update last?"},
+{c:"verb",en:"park",ipa:"/pɑːrk/",pt:"párk",tr:"estacionar",tip:"Também é 'parque'. O carro 'descansa' como no parque.",ex:"Where can I park?",q:"Where do you usually park your car?"},
+{c:"verb",en:"enjoy",ipa:"/ɪnˈdʒɔɪ/",pt:"indjói",tr:"aproveitar; gostar",tip:"'Enjoy' + verbo-ING: I enjoy cooking.",ex:"Enjoy your meal!",q:"What do you enjoy doing on weekends?"},
+{c:"verb",en:"save",ipa:"/seɪv/",pt:"sêiv",tr:"guardar; economizar; salvar",tip:"Salvar um arquivo, salvar dinheiro, guardar comida: tudo é 'save'.",ex:"Save the leftovers in the fridge.",q:"What do you save money for?"},
+{c:"verb",en:"boil",ipa:"/bɔɪl/",pt:"bóil",tr:"ferver, cozinhar na água",tip:"Boiled eggs = ovos cozidos. Parece 'boi' + L.",ex:"I boil eggs for 10 minutes.",q:"How do you like your eggs: boiled, fried or scrambled?"},
+{c:"verb",en:"try",ipa:"/traɪ/",pt:"tráy",tr:"tentar; experimentar",tip:"Try food = provar. Try to do = tentar fazer.",ex:"Try this cake!",q:"What new food did you try recently?"},
+{c:"verb",en:"miss",ipa:"/mɪs/",pt:"mís",tr:"sentir saudade; perder (ônibus)",tip:"'Saudade' vira verbo: I miss you.",ex:"I miss my family.",q:"Who do you miss the most?"},
+{c:"verb",en:"speak (spoke)",ipa:"/spiːk/ · /spoʊk/",pt:"spíik / spôuk",tr:"falar (falou)",tip:"Passado irregular: speak → spoke.",ex:"I spoke with her yesterday.",q:"Who did you speak with today?"},
+{c:"verb",en:"describe",ipa:"/dɪˈskraɪb/",pt:"discráib",tr:"descrever",tip:"Escrever (scribe) + de: você 'escreve' como algo é.",ex:"Describe your best friend.",q:"How would you describe your city?"},
+
+// ---------- ADJECTIVES ----------
+{c:"adj",en:"windy",ipa:"/ˈwɪndi/",pt:"uíndi",tr:"ventoso",tip:"WIND (vento) + Y = cheio de vento.",ex:"It's cold and windy today.",q:"Do you like windy days? Why or why not?"},
+{c:"adj",en:"peaceful",ipa:"/ˈpiːsfəl/",pt:"písfúl",tr:"tranquilo, pacífico",tip:"PEACE (paz) + FUL (cheio de) = cheio de paz.",ex:"Barra Velha is peaceful.",q:"What's the most peaceful place you know?"},
+{c:"adj",en:"developed",ipa:"/dɪˈveləpt/",pt:"divélopt",tr:"desenvolvido",tip:"Terminação -ED soa como /t/ aqui: divélopt.",ex:"It's a developed city.",q:"Is your city developed or still growing?"},
+{c:"adj",en:"growing",ipa:"/ˈɡroʊɪŋ/",pt:"grôuing",tr:"em crescimento",tip:"Fale 'a growing city', nunca 'growth city'. GROW + ING.",ex:"It's a growing city.",q:"What is a growing business in your area?"},
+{c:"adj",en:"calm",ipa:"/kɑːm/",pt:"cáam (o L é mudo)",tr:"calmo",tip:"O L é mudo, como em 'palm' e 'salmon'.",ex:"She is a calm person.",q:"What helps you stay calm?"},
+{c:"adj",en:"smart",ipa:"/smɑːrt/",pt:"smárt",tr:"inteligente",tip:"Em inglês, 'smart' = inteligente, não 'elegante'.",ex:"He's very smart.",q:"Who is the smartest person you know?"},
+{c:"adj",en:"clever",ipa:"/ˈklevər/",pt:"clévar",tr:"esperto, perspicaz",tip:"'Clever' é esperteza prática, pegar rápido uma solução.",ex:"That was a clever idea.",q:"What's the cleverest idea you've had?"},
+{c:"adj",en:"lovely",ipa:"/ˈlʌvli/",pt:"lávli",tr:"adorável, encantador",tip:"LOVE + LY. Quem é 'lovely' é fácil de amar.",ex:"She is a lovely person.",q:"What is something lovely that happened this week?"},
+{c:"adj",en:"late",ipa:"/leɪt/",pt:"lêit",tr:"atrasado; tarde",tip:"Too late = tarde demais.",ex:"I'm late for class!",q:"Are you often late or always on time?"},
+{c:"adj",en:"organized",ipa:"/ˈɔːrɡənaɪzd/",pt:"órganáizd",tr:"organizado",tip:"Verbo organize + ED.",ex:"My desk is very organized.",q:"Are you an organized person? Explain."},
+
+// ---------- EXPRESSIONS ----------
+{c:"expr",en:"What's ___ like?",ipa:"/wʌts ... laɪk/",pt:"uóts ... láik",tr:"Como é ___? (descrever)",tip:"Para descrever, nunca use 'How is...?' O 'like' fica no FINAL.",ex:"What's Julia like? She's kind and funny.",q:"What's your hometown like?"},
+{c:"expr",en:"very + adjective",ipa:"/ˈveri/",pt:"véri",tr:"muito + adjetivo",tip:"VERY = muito (normal): very hot.",ex:"It's very hot.",q:"What is something that is very important to you?"},
+{c:"expr",en:"so + adjective",ipa:"/soʊ/",pt:"sôu",tr:"tão + adjetivo",tip:"SO enfatiza, como 'tão' em PT: so hot!",ex:"It's so hot today!",q:"What was so good this week?"},
+{c:"expr",en:"too + adjective",ipa:"/tuː/",pt:"túu",tr:"demais (excesso, negativo)",tip:"TOO = passou do limite: too late, too hot.",ex:"It's too late to call her.",q:"What is too expensive for you right now?"},
+{c:"expr",en:"as soon as",ipa:"/æz suːn æz/",pt:"éz súun éz",tr:"assim que",tip:"'Tão cedo quanto'. Depois dele, use presente: As soon as I arrive, I'll call you.",ex:"Call me as soon as you arrive.",q:"What will you do as soon as you get home?"},
+{c:"expr",en:"of course",ipa:"/əv kɔːrs/",pt:"óv córs",tr:"claro, com certeza",tip:"Resposta rápida: 'Can you help me?' 'Of course!'",ex:"Of course I can help.",q:"What do you say 'of course' to every day?"},
+{c:"expr",en:"on the contrary",ipa:"/ɑːn ðə ˈkɑːntreri/",pt:"on dhe cónntreri",tr:"pelo contrário",tip:"CONTRARY = contrário. Usada para negar algo.",ex:"I'm not tired. On the contrary, I'm energetic.",q:"Say something people think about you, then correct it with 'on the contrary'."},
+{c:"expr",en:"almost always",ipa:"/ˈɔːlmoʊst ˈɔːlweɪz/",pt:"ólmôust ólueiz",tr:"quase sempre",tip:"Atenção: 'almost EVER' não existe. É 'almost ALWAYS'.",ex:"I almost always drink coffee.",q:"What do you almost always do before bed?"},
+{c:"expr",en:"at the last second",ipa:"/æt ðə læst ˈsekənd/",pt:"ét dhe lést sékend",tr:"no último segundo",tip:"Com 'the' e 'at': at the last second. Também: at the last minute.",ex:"He arrived at the last second.",q:"Did you ever do something at the last second?"},
+{c:"expr",en:"take a long time",ipa:"/teɪk ə lɔːŋ taɪm/",pt:"têik e lónng táim",tr:"demorar",tip:"Sempre com 'time'. It takes a long time = demora muito.",ex:"It takes a long time to get there.",q:"What takes a long time in your daily routine?"},
+{c:"expr",en:"half past six",ipa:"/hæf pæst sɪks/",pt:"réf pést síks",tr:"seis e meia (6:30)",tip:"HALF PAST = 'meia passada' da hora. Também: six thirty.",ex:"I wake up at half past six.",q:"What do you do at half past six in the evening?"},
+{c:"expr",en:"What kind of ___ do you ___?",ipa:"/wʌt kaɪnd əv/",pt:"uót káind óv",tr:"Que tipo de ___ você ___?",tip:"KIND = tipo. Perguntas de gosto: What kind of music do you like?",ex:"What kind of book do you read?",q:"What kind of movies do you watch?"},
+{c:"expr",en:"than",ipa:"/ðæn/",pt:"dhén",tr:"do que (comparação)",tip:"Para comparar: taller THAN. Não confunda com 'then' (então).",ex:"She is taller than me.",q:"Is summer better than winter for you? Why?"},
+{c:"expr",en:"even",ipa:"/ˈiːvn/",pt:"ívn",tr:"até mesmo; nem mesmo",tip:"Reforça surpresa: I can't even walk.",ex:"He didn't even say goodbye.",q:"What can't you even imagine doing?"},
+
+// ---------- SLANG ----------
+{c:"slang",en:"gonna",ipa:"/ˈɡʌnə/",pt:"gâna",tr:"going to (vou fazer)",tip:"Falado rápido: going to → gonna. Só na fala.",ex:"I'm gonna call you later.",q:"What are you gonna do tonight?"},
+{c:"slang",en:"wanna",ipa:"/ˈwɑːnə/",pt:"uóna",tr:"want to (quero)",tip:"want to → wanna. Muito comum.",ex:"I wanna sleep.",q:"What do you wanna eat today?"},
+{c:"slang",en:"gotta",ipa:"/ˈɡɑːtə/",pt:"gárra",tr:"have to / got to (tenho que)",tip:"Soa como 'gárra' no inglês americano.",ex:"I gotta go.",q:"What do you gotta do this weekend?"},
+{c:"slang",en:"my bad",ipa:"/maɪ bæd/",pt:"mái béd",tr:"foi mal, minha culpa",tip:"Pedir desculpa rápido: 'minha ruim'.",ex:"Oh, my bad! I forgot.",q:"When was the last time you said 'my bad'?"},
+{c:"slang",en:"chill",ipa:"/tʃɪl/",pt:"tchíl",tr:"relaxar; tranquilo",tip:"Chill (esfriar). 'Chill out' = acalme-se.",ex:"Let's chill at home today.",q:"How do you like to chill after work?"},
+{c:"slang",en:"dude",ipa:"/duːd/",pt:"dúud",tr:"cara, mano",tip:"Para chamar amigo. Informal.",ex:"Dude, that's awesome!",q:"Who is a good dude (or friend) in your life?"},
+{c:"slang",en:"bummer",ipa:"/ˈbʌmər/",pt:"bâmer",tr:"que chato / que pena",tip:"Quando algo dá errado.",ex:"The trip was canceled. What a bummer!",q:"What was a bummer for you this month?"},
+{c:"slang",en:"no worries",ipa:"/noʊ ˈwɜːriz/",pt:"nôu uóriz",tr:"sem problemas, de nada",tip:"Resposta informal para 'sorry' ou 'thanks'.",ex:"Thanks! — No worries.",q:"Someone says 'sorry I'm late'. What do you answer?"},
+{c:"slang",en:"I'm down",ipa:"/aɪm daʊn/",pt:"áim dáun",tr:"bora, topo",tip:"Aceitar um convite: 'estou dentro'.",ex:"Pizza tonight? — I'm down!",q:"What plan are you always down for?"}
+];
+
+// ---------- ESTADO ----------
+const KEY="flashcards_ingles_v1";
+const DAY=86400000;
+let state={progress:{},custom:[]};
+try{const s=localStorage.getItem(KEY); if(s) state=Object.assign(state,JSON.parse(s));}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,"-");
+function allCards(){
+  return BASE.concat(state.custom).map(c=>({...c,id:c.c+":"+slug(c.en)}));
+}
+let currentCat="all", ahead=false, current=null, flipped=false;
+
+function isDue(card){
+  const p=state.progress[card.id];
+  return !p || p.due<=Date.now();
+}
+function queue(){
+  let cards=allCards().filter(c=>currentCat==="all"||c.c===currentCat);
+  if(!ahead) cards=cards.filter(isDue);
+  cards.sort((a,b)=>{
+    const da=state.progress[a.id]?.due??0, db=state.progress[b.id]?.due??0;
+    return da-db || Math.random()-.5;
+  });
+  return cards;
+}
+
+function renderTabs(){
+  const cards=allCards();
+  const mk=(key,label)=>{
+    const n=cards.filter(c=>(key==="all"||c.c===key)&&isDue(c)).length;
+    return `<button class="tab ${currentCat===key?"on":""}" data-k="${key}">${label}<span class="n">${n}</span></button>`;
+  };
+  document.getElementById("tabs").innerHTML=mk("all","Todos")+Object.entries(CATS).map(([k,v])=>mk(k,v.label)).join("");
+  document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{currentCat=b.dataset.k;ahead=false;next();});
+}
+function renderStats(){
+  const cards=allCards();
+  const newC=cards.filter(c=>!state.progress[c.id]).length;
+  const due=cards.filter(c=>state.progress[c.id]&&isDue(c)).length;
+  const learned=cards.filter(c=>state.progress[c.id]&&!isDue(c)).length;
+  document.getElementById("stats").innerHTML=
+   `<span class="pill">Novos <b>${newC}</b></span><span class="pill">Para rever <b>${due}</b></span><span class="pill">Em dia <b>${learned}</b></span>`;
+}
+function esc(s){return String(s||"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
+
+function speak(text){
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text.replace(/___/g,"").replace(/[+]/g,"").replace(/\s*\/\s*/g,", "));
+    u.lang="en-US"; u.rate=.85;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+function next(){
+  renderTabs(); renderStats();
+  const q=queue();
+  const stage=document.getElementById("stage");
+  flipped=false;
+  if(!q.length){
+    current=null;
+    const upcoming=allCards().filter(c=>(currentCat==="all"||c.c===currentCat)&&state.progress[c.id]).map(c=>state.progress[c.id].due).sort((a,b)=>a-b)[0];
+    const when=upcoming?`Próximo card volta em ${fmtWhen(upcoming)}.`:"";
+    stage.innerHTML=`<div class="empty"><h2>🎉 Tudo em dia!</h2><p>Você terminou os cards de hoje nesta categoria. ${when}</p><button class="btn" id="aheadInline">Estudar adiantado</button></div>`;
+    document.getElementById("aheadInline").onclick=()=>{ahead=true;next();};
+    return;
+  }
+  current=q[0];
+  const c=current;
+  stage.innerHTML=`
+  <div class="scene">
+    <div class="card" id="card">
+      <div class="face front">
+        <div class="cat">${CATS[c.c]?.label||c.c}${state.progress[c.id]?"":" · novo"}</div>
+        <div class="en">${esc(c.en)}</div>
+        <div class="ipa">${esc(c.ipa)}</div>
+        <button class="btn sm say" id="sayBtn">🔊 ouvir</button>
+        <div class="hint">Toque no card para ver a tradução e o macete</div>
+      </div>
+      <div class="face back">
+        <div class="cat">${CATS[c.c]?.label||c.c}</div>
+        <div class="tr">${esc(c.tr)}</div>
+        <div class="ipa">${esc(c.en)} · ${esc(c.ipa)} · <i>${esc(c.pt)}</i> <button class="btn sm say" id="sayBtn2">🔊</button></div>
+        <div class="row"><div class="lab">Macete</div><div class="tip">${esc(c.tip)}</div></div>
+        <div class="row"><div class="lab">Exemplo</div><div class="ex">${esc(c.ex)} <button class="btn sm" id="sayEx">🔊</button></div></div>
+        <div class="row"><div class="lab">Responda em inglês</div><div><b>${esc(c.q)}</b></div><textarea placeholder="Escreva (ou fale em voz alta) sua resposta..."></textarea></div>
+      </div>
+    </div>
+  </div>
+  <div class="grade" id="grade">
+    <button class="g1" data-d="3">Aprendi<small>volta em 3 dias</small></button>
+    <button class="g2" data-d="2">Rever<small>volta em 2 dias</small></button>
+    <button class="g3" data-d="1">Difícil<small>volta em 1 dia</small></button>
+  </div>`;
+  const card=document.getElementById("card");
+  setFaceHeight(card);
+  card.onclick=e=>{ if(!flipped && !e.target.closest("button")) flip(); };
+  document.getElementById("sayBtn").onclick=e=>{e.stopPropagation();speak(c.en);};
+  document.getElementById("sayBtn2").onclick=()=>speak(c.en);
+  document.getElementById("sayEx").onclick=()=>speak(c.ex);
+  document.querySelectorAll("#grade button").forEach(b=>b.onclick=()=>grade(+b.dataset.d));
+}
+function setFaceHeight(card){
+  // garante altura suficiente para o verso (conteúdo maior)
+  const back=card.querySelector(".back");
+  const h=Math.max(380,back.scrollHeight+6);
+  card.style.minHeight=h+"px";
+}
+function flip(){
+  const card=document.getElementById("card"); if(!card) return;
+  flipped=true; card.classList.add("flip");
+  document.getElementById("grade").classList.add("show");
+  speak(current.en);
+}
+function grade(days){
+  if(!current||!flipped) return;
+  const p=state.progress[current.id]||{reps:0};
+  p.reps=(p.reps||0)+1; p.due=Date.now()+days*DAY; p.last=days;
+  state.progress[current.id]=p; save();
+  next();
+}
+function fmtWhen(ts){
+  const d=Math.ceil((ts-Date.now())/DAY);
+  return d<=0?"menos de 1 dia":d===1?"1 dia":d+" dias";
+}
+
+document.addEventListener("keydown",e=>{
+  if(/TEXTAREA|INPUT|SELECT/.test(e.target.tagName)) return;
+  if(e.code==="Space"){e.preventDefault(); if(current&&!flipped) flip();}
+  else if(flipped){ if(e.key==="1")grade(3); if(e.key==="2")grade(2); if(e.key==="3")grade(1); }
+});
+
+// ferramentas
+document.getElementById("aheadBtn").onclick=()=>{ahead=true;next();};
+document.getElementById("resetBtn").onclick=()=>{ if(confirm("Zerar todo o progresso?")){state.progress={};save();ahead=false;next();} };
+const dlg=document.getElementById("dlg");
+document.getElementById("f_cat").innerHTML=Object.entries(CATS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("");
+document.getElementById("addBtn").onclick=()=>{document.getElementById("form").reset();dlg.showModal();};
+document.getElementById("cancelCard").onclick=()=>dlg.close();
+dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
+document.getElementById("form").addEventListener("submit",e=>{
+  e.preventDefault();
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g("f_en")||!g("f_tr")) return;
+  state.custom.push({c:g("f_cat"),en:g("f_en"),ipa:"",pt:g("f_pt"),tr:g("f_tr"),tip:g("f_tip")||"—",ex:g("f_ex")||"—",q:g("f_q")||"Make a sentence with: "+g("f_en")});
+  save(); dlg.close(); next();
+});
+
+next();
+</script>
+</body>
+</html>
